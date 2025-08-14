@@ -206,6 +206,24 @@ class SimpleBinanceMCPServer:
         # ==================== 市场数据深度工具 ====================
         
         @self.mcp.tool
+        def get_order_book(
+            symbol: str, 
+            limit: int = 100
+        ) -> Dict[str, Any]:
+            """获取订单簿深度"""
+            return self.tools.get_order_book(symbol, limit)
+        
+        @self.mcp.tool
+        def get_klines(
+            symbol: str,
+            timeframe: str = "1h",
+            since: Optional[int] = None,
+            limit: int = 100
+        ) -> List[List]:
+            """获取K线数据"""
+            return self.tools.get_klines(symbol, timeframe, since, limit)
+        
+        @self.mcp.tool
         def get_funding_rate(symbol: str) -> Dict[str, Any]:
             """获取资金费率（期货）"""
             return self.tools.get_funding_rate(symbol)
@@ -350,7 +368,7 @@ class SimpleBinanceMCPServer:
                     "spot": "C96E9MGA",
                     "futures": "eFC56vBf"
                 },
-                "total_tools": 29
+                "total_tools": 30
             }
     
     def run(self):
@@ -365,9 +383,9 @@ class SimpleBinanceMCPServer:
     
     def get_tools_info(self) -> Dict[str, Any]:
         """获取工具信息"""
-        # 返回所有29个工具的基本信息
+        # 返回所有30个工具的基本信息
         return {
-            "total_tools": 29,
+            "total_tools": 30,
             "tools": [
                 # 原有核心工具
                 "create_spot_order", "cancel_order", "get_balance", "get_ticker", 
