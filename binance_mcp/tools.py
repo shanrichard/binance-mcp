@@ -435,7 +435,476 @@ class BinanceMCPTools:
         exchange = self._get_exchange(account_id)
         return exchange.fetch_trading_fees(params)
     
-    # ==================== 设置管理工具 ====================
+    # ==================== 高级订单类型工具 ====================
+    
+    @handle_ccxt_error
+    def create_stop_loss_order(
+        self,
+        account_id: str,
+        symbol: str,
+        side: str,
+        amount: float,
+        stop_price: float,
+        **params
+    ) -> Dict[str, Any]:
+        """
+        创建止损订单
+        
+        Args:
+            account_id: 账户ID
+            symbol: 交易对
+            side: 买卖方向 ("buy" | "sell")
+            amount: 数量
+            stop_price: 触发价格
+            **params: 其他参数
+            
+        Returns:
+            订单信息
+        """
+        exchange = self._get_exchange(account_id)
+        return exchange.create_stop_loss_order(symbol, amount, stop_price, side, params)
+    
+    @handle_ccxt_error
+    def create_take_profit_order(
+        self,
+        account_id: str,
+        symbol: str,
+        side: str,
+        amount: float,
+        take_profit_price: float,
+        **params
+    ) -> Dict[str, Any]:
+        """
+        创建止盈订单
+        
+        Args:
+            account_id: 账户ID
+            symbol: 交易对
+            side: 买卖方向
+            amount: 数量
+            take_profit_price: 止盈价格
+            **params: 其他参数
+            
+        Returns:
+            订单信息
+        """
+        exchange = self._get_exchange(account_id)
+        return exchange.create_take_profit_order(symbol, amount, take_profit_price, side, params)
+    
+    @handle_ccxt_error
+    def create_stop_limit_order(
+        self,
+        account_id: str,
+        symbol: str,
+        side: str,
+        amount: float,
+        stop_price: float,
+        limit_price: float,
+        **params
+    ) -> Dict[str, Any]:
+        """
+        创建止损限价订单
+        
+        Args:
+            account_id: 账户ID
+            symbol: 交易对
+            side: 买卖方向
+            amount: 数量
+            stop_price: 触发价格
+            limit_price: 限价价格
+            **params: 其他参数
+            
+        Returns:
+            订单信息
+        """
+        exchange = self._get_exchange(account_id)
+        return exchange.create_stop_limit_order(symbol, amount, stop_price, limit_price, side, params)
+    
+    @handle_ccxt_error
+    def create_trailing_stop_order(
+        self,
+        account_id: str,
+        symbol: str,
+        side: str,
+        amount: float,
+        trail_percent: float,
+        **params
+    ) -> Dict[str, Any]:
+        """
+        创建追踪止损订单
+        
+        Args:
+            account_id: 账户ID
+            symbol: 交易对
+            side: 买卖方向
+            amount: 数量
+            trail_percent: 追踪百分比
+            **params: 其他参数
+            
+        Returns:
+            订单信息
+        """
+        exchange = self._get_exchange(account_id)
+        return exchange.create_trailing_percent_order(symbol, 'stop', side, amount, None, trail_percent, params)
+    
+    @handle_ccxt_error
+    def create_oco_order(
+        self,
+        account_id: str,
+        symbol: str,
+        side: str,
+        amount: float,
+        price: float,
+        stop_price: float,
+        stop_limit_price: Optional[float] = None,
+        **params
+    ) -> Dict[str, Any]:
+        """
+        创建OCO订单 (One-Cancels-Other)
+        
+        Args:
+            account_id: 账户ID
+            symbol: 交易对
+            side: 买卖方向
+            amount: 数量
+            price: 限价价格
+            stop_price: 止损触发价格
+            stop_limit_price: 止损限价价格（可选）
+            **params: 其他参数
+            
+        Returns:
+            OCO订单信息
+        """
+        exchange = self._get_exchange(account_id)
+        
+        # Binance OCO订单参数
+        oco_params = {
+            'quantity': amount,
+            'price': price,
+            'stopPrice': stop_price,
+            'side': side.upper()
+        }
+        
+        if stop_limit_price:
+            oco_params['stopLimitPrice'] = stop_limit_price
+            
+        oco_params.update(params)
+        
+        # 调用Binance专用OCO接口
+        return exchange.sapi_post_order_oco({
+            'symbol': symbol.replace('/', ''),
+            **oco_params
+        })
+    
+    # ==================== 市场数据深度工具 ====================
+    
+    @handle_ccxt_error
+    def get_funding_rate(
+        self,
+        symbol: str,
+        **params
+    ) -> Dict[str, Any]:
+        """
+        获取资金费率（期货）
+        
+        Args:
+            symbol: 交易对
+            **params: 其他参数
+            
+        Returns:
+            资金费率信息
+        """
+        accounts = self.config_manager.list_accounts()
+        if not accounts:
+            raise ValueError("未配置任何账户")
+        
+        account_id = next(iter(accounts.keys()))
+        exchange = self._get_exchange(account_id)
+        
+        return exchange.fetch_funding_rate(symbol, params)
+    
+    # ==================== 期权交易工具 ====================
+    
+    @handle_ccxt_error
+    def create_option_order(
+        self,
+        account_id: str,
+        symbol: str,
+        side: str,
+        amount: float,
+        price: Optional[float] = None,
+        option_type: str = "limit",
+        **params
+    ) -> Dict[str, Any]:
+        """
+        创建期权订单
+        
+        Args:
+            account_id: 账户ID
+            symbol: 期权合约符号
+            side: 买卖方向 ("buy" | "sell")
+            amount: 数量
+            price: 价格（市价单可为None）
+            option_type: 订单类型 ("limit" | "market")
+            **params: 其他参数
+            
+        Returns:
+            期权订单信息
+        """
+        exchange = self._get_exchange(account_id)
+        
+        # 切换到期权市场
+        exchange.options['defaultType'] = 'option'
+        
+        return exchange.create_order(symbol, option_type, side, amount, price, params)
+    
+    @handle_ccxt_error
+    def get_option_chain(
+        self,
+        underlying: str,
+        **params
+    ) -> List[Dict[str, Any]]:
+        """
+        获取期权链
+        
+        Args:
+            underlying: 标的资产 (如 "BTC")
+            **params: 其他参数
+            
+        Returns:
+            期权链数据
+        """
+        accounts = self.config_manager.list_accounts()
+        if not accounts:
+            raise ValueError("未配置任何账户")
+        
+        account_id = next(iter(accounts.keys()))
+        exchange = self._get_exchange(account_id)
+        
+        return exchange.fetch_option_chain(underlying, params)
+    
+    @handle_ccxt_error
+    def get_option_positions(
+        self,
+        account_id: str,
+        **params
+    ) -> List[Dict[str, Any]]:
+        """
+        获取期权持仓
+        
+        Args:
+            account_id: 账户ID
+            **params: 其他参数
+            
+        Returns:
+            期权持仓列表
+        """
+        exchange = self._get_exchange(account_id)
+        exchange.options['defaultType'] = 'option'
+        
+        return exchange.fetch_option_positions(params)
+    
+    @handle_ccxt_error
+    def get_option_info(
+        self,
+        symbol: str,
+        **params
+    ) -> Dict[str, Any]:
+        """
+        获取期权合约信息
+        
+        Args:
+            symbol: 期权合约符号
+            **params: 其他参数
+            
+        Returns:
+            期权合约详情
+        """
+        accounts = self.config_manager.list_accounts()
+        if not accounts:
+            raise ValueError("未配置任何账户")
+        
+        account_id = next(iter(accounts.keys()))
+        exchange = self._get_exchange(account_id)
+        
+        return exchange.fetch_option(symbol, params)
+    
+    # ==================== 合约/期货交易工具 ====================
+    
+    @handle_ccxt_error
+    def create_contract_order(
+        self,
+        account_id: str,
+        symbol: str,
+        side: str,
+        amount: float,
+        order_type: str = "limit",
+        price: Optional[float] = None,
+        contract_type: str = "future",
+        **params
+    ) -> Dict[str, Any]:
+        """
+        创建合约订单（通用）
+        
+        Args:
+            account_id: 账户ID
+            symbol: 交易对
+            side: 买卖方向
+            amount: 数量
+            order_type: 订单类型
+            price: 价格
+            contract_type: 合约类型 ("future" | "delivery")
+            **params: 其他参数
+            
+        Returns:
+            合约订单信息
+        """
+        exchange = self._get_exchange(account_id)
+        
+        # 设置合约类型
+        if contract_type == "delivery":
+            exchange.options['defaultType'] = 'delivery'
+        else:
+            exchange.options['defaultType'] = 'future'
+        
+        return exchange.create_order(symbol, order_type, side, amount, price, params)
+    
+    @handle_ccxt_error
+    def close_position(
+        self,
+        account_id: str,
+        symbol: str,
+        side: Optional[str] = None,
+        **params
+    ) -> Dict[str, Any]:
+        """
+        一键平仓
+        
+        Args:
+            account_id: 账户ID
+            symbol: 交易对
+            side: 平仓方向（可选，不指定则平所有）
+            **params: 其他参数
+            
+        Returns:
+            平仓结果
+        """
+        exchange = self._get_exchange(account_id)
+        
+        # 获取当前持仓
+        positions = exchange.fetch_positions([symbol])
+        
+        results = []
+        for position in positions:
+            if position['contracts'] > 0:  # 有持仓
+                position_side = position['side']
+                if side is None or position_side == side:
+                    # 平仓（反向开单）
+                    close_side = 'sell' if position_side == 'long' else 'buy'
+                    close_amount = position['contracts']
+                    
+                    result = exchange.create_market_order(
+                        symbol, close_side, close_amount, None, params
+                    )
+                    results.append(result)
+        
+        return {"closed_positions": results}
+    
+    @handle_ccxt_error
+    def get_futures_positions(
+        self,
+        account_id: str,
+        symbols: Optional[List[str]] = None,
+        **params
+    ) -> List[Dict[str, Any]]:
+        """
+        获取期货持仓详情
+        
+        Args:
+            account_id: 账户ID
+            symbols: 指定交易对（可选）
+            **params: 其他参数
+            
+        Returns:
+            期货持仓列表
+        """
+        exchange = self._get_exchange(account_id)
+        exchange.options['defaultType'] = 'future'
+        
+        return exchange.fetch_positions(symbols, params)
+    
+    # ==================== 完善的订单管理工具 ====================
+    
+    @handle_ccxt_error
+    def get_order_status(
+        self,
+        account_id: str,
+        order_id: str,
+        symbol: str,
+        **params
+    ) -> Dict[str, Any]:
+        """
+        查询单个订单状态
+        
+        Args:
+            account_id: 账户ID
+            order_id: 订单ID
+            symbol: 交易对
+            **params: 其他参数
+            
+        Returns:
+            订单详细信息
+        """
+        exchange = self._get_exchange(account_id)
+        return exchange.fetch_order(order_id, symbol, params)
+    
+    @handle_ccxt_error
+    def get_my_trades(
+        self,
+        account_id: str,
+        symbol: Optional[str] = None,
+        since: Optional[int] = None,
+        limit: int = 100,
+        **params
+    ) -> List[Dict[str, Any]]:
+        """
+        获取我的成交记录
+        
+        Args:
+            account_id: 账户ID
+            symbol: 交易对（可选）
+            since: 起始时间戳（可选）
+            limit: 数量限制
+            **params: 其他参数
+            
+        Returns:
+            成交记录列表
+        """
+        exchange = self._get_exchange(account_id)
+        return exchange.fetch_my_trades(symbol, since, limit, params)
+    
+    @handle_ccxt_error
+    def cancel_all_orders(
+        self,
+        account_id: str,
+        symbol: Optional[str] = None,
+        **params
+    ) -> List[Dict[str, Any]]:
+        """
+        批量取消订单
+        
+        Args:
+            account_id: 账户ID
+            symbol: 交易对（可选，不指定则取消所有）
+            **params: 其他参数
+            
+        Returns:
+            取消结果列表
+        """
+        exchange = self._get_exchange(account_id)
+        return exchange.cancel_all_orders(symbol, params)
+    
+    # ==================== 账户设置管理工具 ====================
     
     @handle_ccxt_error
     def set_leverage(
@@ -500,8 +969,8 @@ class BinanceMCPTools:
             account_id: 账户ID
             currency: 币种
             amount: 转账金额
-            from_account: 源账户类型
-            to_account: 目标账户类型
+            from_account: 源账户类型 ("spot" | "future" | "option")
+            to_account: 目标账户类型 ("spot" | "future" | "option")
             **params: 其他参数
             
         Returns:

@@ -143,6 +143,194 @@ class SimpleBinanceMCPServer:
             """
             return self.tools.get_open_orders(account_id, symbol)
         
+        # ==================== 高级订单类型工具 ====================
+        
+        @self.mcp.tool
+        def create_stop_loss_order(
+            account_id: str,
+            symbol: str,
+            side: str,
+            amount: float,
+            stop_price: float
+        ) -> Dict[str, Any]:
+            """创建止损订单"""
+            return self.tools.create_stop_loss_order(account_id, symbol, side, amount, stop_price)
+        
+        @self.mcp.tool
+        def create_take_profit_order(
+            account_id: str,
+            symbol: str,
+            side: str,
+            amount: float,
+            take_profit_price: float
+        ) -> Dict[str, Any]:
+            """创建止盈订单"""
+            return self.tools.create_take_profit_order(account_id, symbol, side, amount, take_profit_price)
+        
+        @self.mcp.tool
+        def create_stop_limit_order(
+            account_id: str,
+            symbol: str,
+            side: str,
+            amount: float,
+            stop_price: float,
+            limit_price: float
+        ) -> Dict[str, Any]:
+            """创建止损限价订单"""
+            return self.tools.create_stop_limit_order(account_id, symbol, side, amount, stop_price, limit_price)
+        
+        @self.mcp.tool
+        def create_trailing_stop_order(
+            account_id: str,
+            symbol: str,
+            side: str,
+            amount: float,
+            trail_percent: float
+        ) -> Dict[str, Any]:
+            """创建追踪止损订单"""
+            return self.tools.create_trailing_stop_order(account_id, symbol, side, amount, trail_percent)
+        
+        @self.mcp.tool
+        def create_oco_order(
+            account_id: str,
+            symbol: str,
+            side: str,
+            amount: float,
+            price: float,
+            stop_price: float,
+            stop_limit_price: Optional[float] = None
+        ) -> Dict[str, Any]:
+            """创建OCO订单 (One-Cancels-Other)"""
+            return self.tools.create_oco_order(account_id, symbol, side, amount, price, stop_price, stop_limit_price)
+        
+        # ==================== 市场数据深度工具 ====================
+        
+        @self.mcp.tool
+        def get_funding_rate(symbol: str) -> Dict[str, Any]:
+            """获取资金费率（期货）"""
+            return self.tools.get_funding_rate(symbol)
+        
+        # ==================== 期权交易工具 ====================
+        
+        @self.mcp.tool
+        def create_option_order(
+            account_id: str,
+            symbol: str,
+            side: str,
+            amount: float,
+            price: Optional[float] = None,
+            option_type: str = "limit"
+        ) -> Dict[str, Any]:
+            """创建期权订单"""
+            return self.tools.create_option_order(account_id, symbol, side, amount, price, option_type)
+        
+        @self.mcp.tool
+        def get_option_chain(underlying: str) -> List[Dict[str, Any]]:
+            """获取期权链"""
+            return self.tools.get_option_chain(underlying)
+        
+        @self.mcp.tool
+        def get_option_positions(account_id: str) -> List[Dict[str, Any]]:
+            """获取期权持仓"""
+            return self.tools.get_option_positions(account_id)
+        
+        @self.mcp.tool
+        def get_option_info(symbol: str) -> Dict[str, Any]:
+            """获取期权合约信息"""
+            return self.tools.get_option_info(symbol)
+        
+        # ==================== 合约/期货交易工具 ====================
+        
+        @self.mcp.tool
+        def create_contract_order(
+            account_id: str,
+            symbol: str,
+            side: str,
+            amount: float,
+            order_type: str = "limit",
+            price: Optional[float] = None,
+            contract_type: str = "future"
+        ) -> Dict[str, Any]:
+            """创建合约订单（通用）"""
+            return self.tools.create_contract_order(account_id, symbol, side, amount, order_type, price, contract_type)
+        
+        @self.mcp.tool
+        def close_position(
+            account_id: str,
+            symbol: str,
+            side: Optional[str] = None
+        ) -> Dict[str, Any]:
+            """一键平仓"""
+            return self.tools.close_position(account_id, symbol, side)
+        
+        @self.mcp.tool
+        def get_futures_positions(
+            account_id: str,
+            symbols: Optional[List[str]] = None
+        ) -> List[Dict[str, Any]]:
+            """获取期货持仓详情"""
+            return self.tools.get_futures_positions(account_id, symbols)
+        
+        # ==================== 完善的订单管理工具 ====================
+        
+        @self.mcp.tool
+        def get_order_status(
+            account_id: str,
+            order_id: str,
+            symbol: str
+        ) -> Dict[str, Any]:
+            """查询单个订单状态"""
+            return self.tools.get_order_status(account_id, order_id, symbol)
+        
+        @self.mcp.tool
+        def get_my_trades(
+            account_id: str,
+            symbol: Optional[str] = None,
+            since: Optional[int] = None,
+            limit: int = 100
+        ) -> List[Dict[str, Any]]:
+            """获取我的成交记录"""
+            return self.tools.get_my_trades(account_id, symbol, since, limit)
+        
+        @self.mcp.tool
+        def cancel_all_orders(
+            account_id: str,
+            symbol: Optional[str] = None
+        ) -> List[Dict[str, Any]]:
+            """批量取消订单"""
+            return self.tools.cancel_all_orders(account_id, symbol)
+        
+        # ==================== 账户设置管理工具 ====================
+        
+        @self.mcp.tool
+        def set_leverage(
+            account_id: str,
+            symbol: str,
+            leverage: float
+        ) -> Dict[str, Any]:
+            """设置杠杆倍数"""
+            return self.tools.set_leverage(account_id, symbol, leverage)
+        
+        @self.mcp.tool
+        def set_margin_mode(
+            account_id: str,
+            symbol: str,
+            margin_mode: str
+        ) -> Dict[str, Any]:
+            """设置保证金模式"""
+            return self.tools.set_margin_mode(account_id, symbol, margin_mode)
+        
+        @self.mcp.tool
+        def transfer_funds(
+            account_id: str,
+            currency: str,
+            amount: float,
+            from_account: str,
+            to_account: str
+        ) -> Dict[str, Any]:
+            """账户间转账"""
+            return self.tools.transfer_funds(account_id, currency, amount, from_account, to_account)
+        
         @self.mcp.tool
         def get_server_info() -> Dict[str, Any]:
             """
@@ -157,11 +345,12 @@ class SimpleBinanceMCPServer:
                 "version": "1.0.0",
                 "configured_accounts": len(accounts),
                 "accounts": list(accounts.keys()) if accounts else [],
-                "supported_markets": ["spot", "futures", "margin"],
+                "supported_markets": ["spot", "futures", "options"],
                 "broker_ids": {
                     "spot": "C96E9MGA",
                     "futures": "eFC56vBf"
-                }
+                },
+                "total_tools": 29
             }
     
     def run(self):
@@ -176,17 +365,32 @@ class SimpleBinanceMCPServer:
     
     def get_tools_info(self) -> Dict[str, Any]:
         """获取工具信息"""
-        # 返回基本信息，避免异步API问题
+        # 返回所有29个工具的基本信息
         return {
-            "total_tools": 7,  # 我们注册的工具数量
+            "total_tools": 29,
             "tools": [
-                "create_spot_order", 
-                "cancel_order", 
-                "get_balance",
-                "get_ticker",
-                "get_positions", 
-                "get_open_orders",
-                "get_server_info"
+                # 原有核心工具
+                "create_spot_order", "cancel_order", "get_balance", "get_ticker", 
+                "get_positions", "get_open_orders", "get_server_info",
+                
+                # 高级订单类型
+                "create_stop_loss_order", "create_take_profit_order", "create_stop_limit_order",
+                "create_trailing_stop_order", "create_oco_order",
+                
+                # 市场数据深度
+                "get_order_book", "get_klines", "get_funding_rate",
+                
+                # 期权交易
+                "create_option_order", "get_option_chain", "get_option_positions", "get_option_info",
+                
+                # 合约/期货交易  
+                "create_contract_order", "close_position", "get_futures_positions",
+                
+                # 完善的订单管理
+                "get_order_status", "get_my_trades", "cancel_all_orders",
+                
+                # 账户设置管理
+                "set_leverage", "set_margin_mode", "transfer_funds"
             ]
         }
 
