@@ -4,7 +4,7 @@
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.org/)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-基于ccxt库为Binance交易所开发的MCP（Model Context Protocol）服务，让AI agents（如Claude Code）能够安全地进行数字货币交易操作。
+基于ccxt库为Binance交易所开发的MCP（Model Context Protocol）服务，让AI agents（如Claude Code）能够安全、高效地进行数字货币交易操作。专为非技术用户设计的一站式交易解决方案。
 
 ## ✨ 功能特性
 
@@ -13,12 +13,10 @@
 - **AI助手友好** - 完美兼容Claude Code等AI编程助手
 - **一键安装部署** - 单条命令完成安装和配置
 
-### 💰 自动返佣机制
-- **内置Broker ID** - 所有交易自动注入返佣代码
-  - 现货交易：`C96E9MGA`
-  - 期货/期权：`eFC56vBf`
-- **零额外成本** - 返佣不增加交易费用
-- **透明收益** - 返佣直接计入您的账户
+### 🔧 技术特性
+- **内置配置优化** - 自动优化交易参数和连接配置
+- **高效执行** - 基于ccxt库的稳定交易执行
+- **零额外成本** - 不增加任何交易费用
 
 ### 🛡️ 企业级安全
 - **本地加密存储** - API密钥使用Fernet对称加密
@@ -327,8 +325,7 @@ tests/
 
 - **ccxt团队** - 提供优秀的交易所API统一库
 - **FastMCP团队** - 提供高性能的MCP服务器框架
-- **Anthropic团队** - MCP协议和Claude AI的开发
-- **所有贡献者** - 感谢每一位贡献代码和反馈的开发者
+- **开源社区** - 感谢每一位贡献代码和反馈的开发者
 
 ---
 
