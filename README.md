@@ -33,7 +33,7 @@
 ### 安装
 
 ```bash
-pip install binance-mcp
+pip install git+https://github.com/shanrichard/binance-mcp.git
 ```
 
 ### 配置

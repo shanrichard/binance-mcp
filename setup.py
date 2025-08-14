@@ -27,7 +27,7 @@ setup(
     description="基于ccxt的Binance交易所MCP服务，为AI agents提供数字货币交易功能",
     long_description=read_readme(),
     long_description_content_type="text/markdown",
-    url="https://github.com/your-username/binance-mcp",
+    url="https://github.com/shanrichard/binance-mcp",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -106,9 +106,9 @@ setup(
         "options",
     ],
     project_urls={
-        "Documentation": "https://github.com/your-username/binance-mcp/docs",
-        "Bug Reports": "https://github.com/your-username/binance-mcp/issues",
-        "Source": "https://github.com/your-username/binance-mcp",
-        "Changelog": "https://github.com/your-username/binance-mcp/blob/main/CHANGELOG.md",
+        "Documentation": "https://github.com/shanrichard/binance-mcp/docs",
+        "Bug Reports": "https://github.com/shanrichard/binance-mcp/issues",
+        "Source": "https://github.com/shanrichard/binance-mcp",
+        "Changelog": "https://github.com/shanrichard/binance-mcp/blob/main/CHANGELOG.md",
     },
 )

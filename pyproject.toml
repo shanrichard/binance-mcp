@@ -59,10 +59,10 @@ test = [
 binance-mcp = "binance_mcp.cli:cli"
 
 [project.urls]
-Homepage = "https://github.com/your-username/binance-mcp"
-Documentation = "https://github.com/your-username/binance-mcp/docs"
-Repository = "https://github.com/your-username/binance-mcp"
-"Bug Tracker" = "https://github.com/your-username/binance-mcp/issues"
+Homepage = "https://github.com/shanrichard/binance-mcp"
+Documentation = "https://github.com/shanrichard/binance-mcp#readme"
+Repository = "https://github.com/shanrichard/binance-mcp"
+"Bug Tracker" = "https://github.com/shanrichard/binance-mcp/issues"
 
 # 代码格式化配置
 [tool.black]
