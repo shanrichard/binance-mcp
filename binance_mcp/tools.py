@@ -748,7 +748,7 @@ class BinanceMCPTools:
         
         Args:
             account_id: 账户ID
-            symbol: 交易对
+            symbol: 交易对 (注意：期货使用不同命名格式，如 "BTCUSDT" 而非 "BTC/USDT")
             side: 买卖方向
             amount: 数量
             order_type: 订单类型
@@ -782,7 +782,7 @@ class BinanceMCPTools:
         
         Args:
             account_id: 账户ID
-            symbol: 交易对
+            symbol: 交易对 (期货格式，如 "BTCUSDT")
             side: 平仓方向（可选，不指定则平所有）
             **params: 其他参数
             
