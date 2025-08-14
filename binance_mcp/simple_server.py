@@ -168,7 +168,8 @@ class SimpleBinanceMCPServer:
         """运行服务器"""
         try:
             logger.info(f"Starting Binance MCP Server on {self.host}:{self.port}")
-            self.mcp.run(host=self.host, port=self.port)
+            # FastMCP默认使用stdio transport，不需要host和port
+            self.mcp.run()
         except Exception as e:
             logger.error(f"Failed to start server: {e}")
             raise

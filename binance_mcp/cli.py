@@ -22,7 +22,7 @@ import click
 
 from . import __version__
 from .config import ConfigManager
-from .server import create_server, get_server
+from .simple_server import SimpleBinanceMCPServer
 from .broker import exchange_factory
 
 # 配置日志
@@ -119,19 +119,22 @@ def start(port, host, daemon):
             start_daemon(host, port)
         else:
             # 前台运行模式
-            server = create_server(port=port, host=host)
+            server = SimpleBinanceMCPServer(port=port, host=host)
             
-            # 设置信号处理
-            def signal_handler(signum, frame):
-                click.echo("\n正在停止服务...")
-                server.stop()
-                sys.exit(0)
-            
-            signal.signal(signal.SIGINT, signal_handler)
-            signal.signal(signal.SIGTERM, signal_handler)
+            # 设置信号处理（仅在主线程中）
+            try:
+                def signal_handler(signum, frame):
+                    click.echo("\n正在停止服务...")
+                    sys.exit(0)
+                
+                signal.signal(signal.SIGINT, signal_handler)
+                signal.signal(signal.SIGTERM, signal_handler)
+            except ValueError:
+                # 不在主线程中，跳过信号处理
+                pass
             
             # 启动服务器
-            server.start()
+            server.run()
         
     except Exception as e:
         click.echo(f"启动失败: {e}", err=True)
