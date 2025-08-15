@@ -84,6 +84,30 @@ class BinanceMCPTools:
         
         return self._exchange_cache[account_id]
     
+    def _create_spot_only_exchange(self, account_config: Dict[str, Any]) -> ccxt.binance:
+        """
+        创建专门用于现货的exchange实例（不使用portfolioMargin配置）
+        
+        Args:
+            account_config: 账户配置
+            
+        Returns:
+            专门用于现货的ccxt.binance实例
+        """
+        return ccxt.binance({
+            'apiKey': account_config['api_key'],
+            'secret': account_config['secret'],
+            'sandbox': account_config.get('sandbox', False),
+            'enableRateLimit': True,
+            'options': {
+                'defaultType': 'spot',
+                'broker': {
+                    'spot': 'C96E9MGA',  # 现货broker ID
+                },
+                # 重要：不设置portfolioMargin，让现货使用标准API
+            }
+        })
+    
     # ==================== 交易操作工具 ====================
     
     @handle_ccxt_error
@@ -135,7 +159,7 @@ class BinanceMCPTools:
         
         Args:
             account_id: 账户ID
-            symbol: 交易对 (如 "BTC/USDT")
+            symbol: 交易对 (如 "1000SHIBUSDT" 永续合约)
             side: 买卖方向 ("buy" | "sell")
             amount: 数量
             order_type: 订单类型
@@ -147,10 +171,33 @@ class BinanceMCPTools:
         """
         exchange = self._get_exchange(account_id)
         
-        # 切换到期货市场
-        exchange.options['defaultType'] = 'future'
+        # 检查是否为统一账户模式
+        account_config = self.config_manager.get_account(account_id)
+        is_portfolio_margin = account_config.get('portfolio_margin', False)
         
-        return exchange.create_order(symbol, order_type, side, amount, price, params)
+        if is_portfolio_margin:
+            # 统一账户模式：使用Portfolio Margin API
+            # 双向持仓模式需要指定positionSide
+            position_side = 'LONG' if side.upper() == 'BUY' else 'SHORT'
+            
+            order_params = {
+                'symbol': symbol.replace('/', ''),
+                'side': side.upper(),
+                'type': order_type.upper(),
+                'quantity': amount,
+                'positionSide': position_side  # 双向持仓模式必需
+            }
+            
+            if order_type != "market" and price is not None:
+                order_params['price'] = price
+                
+            order_params.update(params)
+            
+            return exchange.papiPostUmOrder(order_params)
+        else:
+            # 普通账户模式：使用原有逻辑
+            exchange.options['defaultType'] = 'future'
+            return exchange.create_order(symbol, order_type, side, amount, price, params)
     
     @handle_ccxt_error
     def cancel_order(
@@ -228,15 +275,58 @@ class BinanceMCPTools:
         """
         exchange = self._get_exchange(account_id)
         
-        # 根据账户类型设置
-        if account_type == "future":
-            exchange.options['defaultType'] = 'future'
-        elif account_type == "option":
-            exchange.options['defaultType'] = 'option'
-        else:
-            exchange.options['defaultType'] = 'spot'
+        # 检查是否为统一账户模式
+        account_config = self.config_manager.get_account(account_id)
+        is_portfolio_margin = account_config.get('portfolio_margin', False)
         
-        return exchange.fetch_balance(params)
+        if is_portfolio_margin:
+            # 统一账户模式下的逻辑
+            if account_type in ["future", "option", "margin"]:
+                # 衍生品账户：使用Portfolio Margin API
+                balance_data = exchange.papi_get_balance(params)
+                
+                # 将Portfolio Margin API格式转换为ccxt标准格式
+                if isinstance(balance_data, list):
+                    result = {}
+                    for asset in balance_data:
+                        currency = asset.get('asset')
+                        if currency:
+                            # 统一账户的总可用余额 = 杠杆可用 + 期货余额
+                            cross_margin_free = float(asset.get('crossMarginFree', 0))
+                            um_wallet_balance = float(asset.get('umWalletBalance', 0)) 
+                            cm_wallet_balance = float(asset.get('cmWalletBalance', 0))
+                            
+                            total_available = cross_margin_free + um_wallet_balance + cm_wallet_balance
+                            total_wallet_balance = float(asset.get('totalWalletBalance', 0))
+                            
+                            result[currency] = {
+                                'free': total_available,
+                                'used': max(0, total_wallet_balance - total_available),
+                                'total': total_wallet_balance,
+                                # 额外信息用于调试
+                                'crossMarginFree': cross_margin_free,
+                                'umWalletBalance': um_wallet_balance,
+                                'cmWalletBalance': cm_wallet_balance
+                            }
+                    return result
+                else:
+                    return balance_data
+            else:
+                # 现货账户：即使在统一账户模式下，现货账户仍然是独立的
+                # 创建一个专门的现货exchange（不使用portfolioMargin配置）
+                account_config = self.config_manager.get_account(account_id)
+                spot_exchange = self._create_spot_only_exchange(account_config)
+                return spot_exchange.fetch_balance(params)
+        else:
+            # 普通账户模式：使用原有逻辑
+            if account_type == "future":
+                exchange.options['defaultType'] = 'future'
+            elif account_type == "option":
+                exchange.options['defaultType'] = 'option'
+            else:
+                exchange.options['defaultType'] = 'spot'
+            
+            return exchange.fetch_balance(params)
     
     @handle_ccxt_error
     def get_positions(
@@ -702,7 +792,8 @@ class BinanceMCPTools:
         exchange = self._get_exchange(account_id)
         exchange.options['defaultType'] = 'option'
         
-        return exchange.fetch_option_positions(params)
+        # ccxt的fetch_option_positions不需要symbol参数
+        return exchange.fetch_option_positions(None, params)
     
     @handle_ccxt_error
     def get_option_info(
@@ -748,7 +839,7 @@ class BinanceMCPTools:
         
         Args:
             account_id: 账户ID
-            symbol: 交易对 (注意：期货使用不同命名格式，如 "BTCUSDT" 而非 "BTC/USDT")
+            symbol: 交易对 (注意：期货使用不同命名格式，如 "1000SHIBUSDT" 而非 "SHIB/USDT")
             side: 买卖方向
             amount: 数量
             order_type: 订单类型
@@ -761,13 +852,38 @@ class BinanceMCPTools:
         """
         exchange = self._get_exchange(account_id)
         
-        # 设置合约类型
-        if contract_type == "delivery":
-            exchange.options['defaultType'] = 'delivery'
-        else:
-            exchange.options['defaultType'] = 'future'
+        # 检查是否为统一账户模式
+        account_config = self.config_manager.get_account(account_id)
+        is_portfolio_margin = account_config.get('portfolio_margin', False)
         
-        return exchange.create_order(symbol, order_type, side, amount, price, params)
+        if is_portfolio_margin:
+            # 统一账户模式：使用Portfolio Margin API下单
+            # 双向持仓模式需要指定positionSide
+            position_side = 'LONG' if side.upper() == 'BUY' else 'SHORT'
+            
+            order_params = {
+                'symbol': symbol.replace('/', ''),
+                'side': side.upper(),
+                'type': order_type.upper(),
+                'quantity': amount,
+                'positionSide': position_side  # 双向持仓模式必需
+            }
+            
+            if order_type != "market" and price is not None:
+                order_params['price'] = price
+            
+            order_params.update(params)
+            
+            # 使用正确的CCXT Portfolio Margin API方法
+            return exchange.papiPostUmOrder(order_params)
+        else:
+            # 普通账户模式：使用原有逻辑
+            if contract_type == "delivery":
+                exchange.options['defaultType'] = 'delivery'
+            else:
+                exchange.options['defaultType'] = 'future'
+            
+            return exchange.create_order(symbol, order_type, side, amount, price, params)
     
     @handle_ccxt_error
     def close_position(
@@ -976,8 +1092,106 @@ class BinanceMCPTools:
         Returns:
             转账结果
         """
-        exchange = self._get_exchange(account_id)
-        return exchange.transfer(currency, amount, from_account, to_account, params)
+        # 对于转账功能，需要使用不带portfolioMargin配置的exchange
+        # 因为universal transfer API不支持portfolioMargin模式
+        account_config = self.config_manager.get_account(account_id)
+        
+        # 创建专门用于转账的exchange实例
+        transfer_exchange = ccxt.binance({
+            'apiKey': account_config['api_key'],
+            'secret': account_config['secret'],
+            'sandbox': account_config.get('sandbox', False),
+            'enableRateLimit': True,
+            'options': {
+                'broker': {
+                    'spot': 'C96E9MGA',
+                    'future': 'eFC56vBf',
+                    'option': 'eFC56vBf',
+                },
+                # 重要: 不设置portfolioMargin，让转账使用universal transfer API
+            }
+        })
+        
+        # 统一账户模式下，直接调用universal transfer API
+        account_config = self.config_manager.get_account(account_id)
+        is_portfolio_margin = account_config.get('portfolio_margin', False)
+        
+        if is_portfolio_margin:
+            # 统一账户模式：根据币安的限制，需要特殊处理转账路径
+            # 现货 ↔ 期货 必须通过全仓杠杆账户中转
+            transfer_exchange.load_markets()
+            
+            if from_account == 'spot' and to_account == 'future':
+                # 现货 → 期货：统一账户模式的特殊处理
+                # 步骤1：现货 → 全仓杠杆（杠杆余额可直接用于期货交易）
+                step1_result = transfer_exchange.sapi_post_asset_transfer({
+                    'type': 'MAIN_MARGIN',
+                    'asset': currency,
+                    'amount': amount,
+                    **params
+                })
+                
+                # 等待1秒确保转账完成
+                import time
+                time.sleep(1)
+                
+                return {
+                    'tranId': step1_result.get('tranId'),
+                    'status': 'completed',
+                    'message': f'转账成功：{amount} {currency} 已转入统一账户杠杆余额，可用于期货交易'
+                }
+                
+            elif from_account == 'future' and to_account == 'spot':
+                # 期货 → 现货：分两步
+                # 步骤1：期货 → 全仓杠杆  
+                step1_result = transfer_exchange.sapi_post_asset_transfer({
+                    'type': 'UMFUTURE_MARGIN',
+                    'asset': currency, 
+                    'amount': amount,
+                    **params
+                })
+                
+                # 等待1秒确保转账完成
+                import time
+                time.sleep(1)
+                
+                # 步骤2：全仓杠杆 → 现货
+                step2_result = transfer_exchange.sapi_post_asset_transfer({
+                    'type': 'MARGIN_MAIN',
+                    'asset': currency,
+                    'amount': amount, 
+                    **params
+                })
+                
+                return {
+                    'step1': step1_result,
+                    'step2': step2_result,
+                    'tranId': step2_result.get('tranId'),
+                    'status': 'completed',
+                    'message': f'两步转账完成：期货 → 杠杆 → 现货'
+                }
+            else:
+                # 其他支持的直接转账
+                transfer_type_map = {
+                    ('spot', 'margin'): 'MAIN_MARGIN',     # 现货到全仓杠杆
+                    ('margin', 'spot'): 'MARGIN_MAIN',     # 全仓杠杆到现货
+                    ('margin', 'future'): 'MARGIN_UMFUTURE', # 杠杆到期货
+                    ('future', 'margin'): 'UMFUTURE_MARGIN', # 期货到杠杆
+                }
+                
+                transfer_type = transfer_type_map.get((from_account, to_account))
+                if not transfer_type:
+                    raise ValueError(f"统一账户模式下不支持的转账类型: {from_account} -> {to_account}")
+                
+                return transfer_exchange.sapi_post_asset_transfer({
+                    'type': transfer_type,
+                    'asset': currency,
+                    'amount': amount,
+                    **params
+                })
+        else:
+            # 普通账户模式：使用ccxt的transfer方法
+            return transfer_exchange.transfer(currency, amount, from_account, to_account, params)
     
     # ==================== 工具辅助方法 ====================
     

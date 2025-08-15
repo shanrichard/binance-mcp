@@ -57,6 +57,8 @@ class BinanceExchangeFactory:
                 'broker': cls.BROKER_IDS.copy(),  # 注入broker ID配置
                 # 其他可能的选项
                 'defaultType': 'spot',  # 默认为现货交易
+                # 检查是否启用统一账户模式
+                'portfolioMargin': account_config.get('portfolio_margin', False),
             }
         }
         

@@ -142,14 +142,18 @@ class ConfigManager:
         
         encrypted_account = self._config["accounts"][account_id]
         
-        # 解密敏感信息
-        return {
+        # 解密敏感信息，同时保留所有其他配置项
+        decrypted_account = {
             "api_key": self.decrypt_value(encrypted_account["api_key"]),
             "secret": self.decrypt_value(encrypted_account["secret"]),
-            "sandbox": encrypted_account["sandbox"],
-            "description": encrypted_account.get("description", ""),
-            "created_at": encrypted_account.get("created_at", "")
         }
+        
+        # 复制所有非敏感配置项
+        for key, value in encrypted_account.items():
+            if key not in ["api_key", "secret"]:
+                decrypted_account[key] = value
+        
+        return decrypted_account
     
     def list_accounts(self) -> Dict[str, Dict[str, Any]]:
         """列出所有账户（不包含敏感信息）"""

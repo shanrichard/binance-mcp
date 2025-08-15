@@ -109,7 +109,7 @@ def test_simple_server():
         
         # 获取工具信息
         tools_info = server.get_tools_info()
-        assert tools_info['total_tools'] == 7, "工具数量不正确"
+        assert tools_info['total_tools'] == 30, "工具数量不正确"
         assert 'create_spot_order' in tools_info['tools'], "缺少现货订单工具"
         assert 'get_balance' in tools_info['tools'], "缺少余额查询工具"
         
